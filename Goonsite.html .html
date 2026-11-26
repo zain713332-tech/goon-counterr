@@ -1,0 +1,471 @@
+<!doctype html><html><head><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1,viewport-fit=cover"><style>:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#fff;color:#000}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}</style></head><body>
+<title>Goon Counter</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Big+Shoulders+Display:wght@700;800;900&family=DM+Sans:wght@400;500;700&family=JetBrains+Mono:wght@500;700&display=swap">
+<style>
+  /* Layout: a league table. Giant condensed masthead, a weekly countdown, then ranked rows
+     where the person on the hot seat flips to a solid yellow strip. */
+  :root {
+    --bg: #1757d9;
+    --bg-lift: #2a6af0;
+    --panel: #0f46b5;
+    --panel-line: #4a82f0;
+    --ink: #f4f8ff;
+    --ink-dim: #c4d6fc;
+    --hi: #ffd43b;
+    --hi-ink: #0a2f86;
+    --good: #82ffc6;
+    --display: "Big Shoulders Display", "Arial Narrow", Impact, sans-serif;
+    --body: "DM Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
+    --mono: "JetBrains Mono", ui-monospace, "SFMono-Regular", Menlo, monospace;
+    color-scheme: dark;
+  }
+  * { box-sizing: border-box; }
+  html, body { min-height: 100%; }
+  body {
+    background: var(--bg);
+    background-image: radial-gradient(130% 55% at 50% 0%, var(--bg-lift), var(--bg) 62%);
+    color: var(--ink);
+    font-family: var(--body);
+    font-size: 16px;
+    line-height: 1.5;
+    padding-block: 28px 96px;
+    padding-left: max(16px, env(safe-area-inset-left, 0px));
+    padding-right: max(16px, env(safe-area-inset-right, 0px));
+  }
+  .wrap { max-width: 44rem; margin: 0 auto; display: flex; flex-direction: column; gap: 2.75rem; }
+  h1, h2, h3, p, ul, ol { margin: 0; }
+  ul, ol { padding: 0; list-style: none; }
+
+  .eyebrow {
+    font-family: var(--mono); font-size: .75rem; letter-spacing: .14em; text-transform: uppercase;
+    color: var(--ink-dim);
+  }
+  h1 {
+    font-family: var(--display); font-weight: 900; text-transform: uppercase;
+    font-size: clamp(4rem, 21vw, 8.5rem); line-height: .82; letter-spacing: -.01em;
+    text-wrap: balance; margin-top: .6rem;
+  }
+  h1 span { display: block; }
+  h1 span + span { color: var(--hi); }
+  .mast { display: flex; flex-direction: column; gap: .4rem; }
+  .clock {
+    display: flex; flex-wrap: wrap; align-items: baseline; gap: .35rem 1rem; margin-top: 1.1rem;
+    padding-top: .9rem; border-top: 2px solid var(--ink);
+  }
+  .clock-label { font-size: .8rem; font-weight: 700; letter-spacing: .1em; text-transform: uppercase; color: var(--ink-dim); }
+  .clock-val { font-family: var(--mono); font-weight: 700; font-size: 1.5rem; font-variant-numeric: tabular-nums; }
+
+  h2 {
+    font-family: var(--display); font-weight: 800; text-transform: uppercase;
+    font-size: 1.9rem; letter-spacing: .02em; line-height: 1; text-wrap: balance;
+  }
+  .sec { display: flex; flex-direction: column; gap: 1rem; }
+  .sec-head { display: flex; flex-direction: column; gap: .35rem; }
+  .sub { color: var(--ink-dim); font-size: .95rem; max-width: 65ch; }
+
+  .banner {
+    font-weight: 700; padding: .7rem 1rem; background: var(--panel); border: 1px solid var(--panel-line); border-radius: 4px;
+  }
+
+  .rows { border-top: 2px solid var(--ink); }
+  .row {
+    display: grid; grid-template-columns: 2.1rem minmax(0, 1fr) auto; column-gap: 1rem; row-gap: .6rem; align-items: center;
+    padding: .95rem .9rem; border-bottom: 1px solid var(--panel-line);
+  }
+  .row.hot { background: var(--hi); color: var(--hi-ink); border-bottom-color: var(--hi); }
+  .rank { font-family: var(--mono); font-weight: 700; font-size: 1.05rem; opacity: .8; font-variant-numeric: tabular-nums; }
+  .who { display: flex; flex-direction: column; gap: .3rem; min-width: 0; }
+  .nm {
+    font-family: var(--display); font-weight: 800; text-transform: uppercase; letter-spacing: .02em;
+    font-size: 2rem; line-height: .95; overflow-wrap: anywhere;
+  }
+  .meta { display: flex; flex-wrap: wrap; align-items: center; gap: .4rem .7rem; font-size: .85rem; }
+  .streak { font-family: var(--mono); font-size: .75rem; opacity: .85; }
+  .pill {
+    font-size: .66rem; font-weight: 700; letter-spacing: .14em; text-transform: uppercase;
+    padding: .12rem .5rem; border: 1.5px solid currentColor; border-radius: 2px;
+  }
+  .pill.clean { color: var(--good); }
+  .pill.watch { color: var(--ink); }
+  .row.hot .pill { color: var(--hi-ink); }
+  .count {
+    font-family: var(--display); font-weight: 900; font-size: 3.6rem; line-height: .85;
+    font-variant-numeric: tabular-nums; min-width: 1.4ch; text-align: right;
+  }
+  .actions { grid-column: 2 / -1; display: flex; flex-wrap: wrap; align-items: center; gap: .5rem; }
+  .ask { font-size: .9rem; font-weight: 700; margin-right: .25rem; }
+
+  .btn {
+    font-family: var(--body); font-weight: 700; font-size: .78rem; letter-spacing: .08em; text-transform: uppercase;
+    min-height: 44px; padding: .55rem 1rem; border: 2px solid currentColor; border-radius: 3px;
+    background: transparent; color: inherit; cursor: pointer;
+  }
+  .btn:hover:not(:disabled) { background: rgba(255, 255, 255, .14); }
+  .row.hot .btn:hover:not(:disabled) { background: rgba(10, 47, 134, .12); }
+  .btn.primary { background: var(--hi); border-color: var(--hi); color: var(--hi-ink); }
+  .btn.primary:hover:not(:disabled) { background: #ffe27a; border-color: #ffe27a; }
+  .row.hot .btn.primary { background: var(--hi-ink); border-color: var(--hi-ink); color: var(--ink); }
+  .row.hot .btn.primary:hover:not(:disabled) { background: #123f9f; border-color: #123f9f; }
+  .btn.ghost { border-color: transparent; text-decoration: underline; text-underline-offset: 3px; padding-inline: .5rem; }
+  .btn:disabled { opacity: .5; cursor: not-allowed; }
+  .btn:focus-visible { outline: 3px solid var(--ink); outline-offset: 2px; }
+  .row.hot .btn:focus-visible { outline-color: var(--hi-ink); }
+
+  .panel { background: var(--panel); border: 1px solid var(--panel-line); border-radius: 4px; padding: 1.25rem; display: flex; flex-direction: column; gap: 1rem; }
+  .draw {
+    font-family: var(--display); font-weight: 800; font-size: clamp(1.7rem, 7vw, 2.4rem); line-height: 1.05;
+    text-wrap: balance; color: var(--hi); min-height: 2.2em;
+  }
+  .draw.idle { color: var(--ink-dim); font-family: var(--body); font-weight: 500; font-size: 1.05rem; line-height: 1.4; min-height: 0; }
+  .panel .btn { align-self: flex-start; }
+  details { color: var(--ink-dim); font-size: .92rem; }
+  summary { cursor: pointer; font-weight: 700; color: var(--ink); min-height: 32px; display: flex; align-items: center; }
+  summary:focus-visible { outline: 3px solid var(--ink); outline-offset: 2px; }
+  details ul { margin-top: .6rem; display: flex; flex-direction: column; gap: .45rem; }
+  details li { padding-left: 1.1rem; position: relative; }
+  details li::before { content: ""; position: absolute; left: 0; top: .6em; width: .45rem; height: 2px; background: var(--hi); }
+
+  .hist { border-top: 2px solid var(--ink); }
+  .hist li { display: flex; flex-wrap: wrap; justify-content: space-between; gap: .2rem 1rem; padding: .75rem .25rem; border-bottom: 1px solid var(--panel-line); }
+  .hist .wk { font-family: var(--mono); font-size: .82rem; color: var(--ink-dim); }
+  .hist .res { font-weight: 700; }
+  .empty { color: var(--ink-dim); padding: .9rem .25rem; border-bottom: 1px solid var(--panel-line); }
+
+  .rules { display: flex; flex-direction: column; gap: .6rem; }
+  .rules li { padding-left: 1.1rem; position: relative; max-width: 65ch; }
+  .rules li::before { content: ""; position: absolute; left: 0; top: .72em; width: .45rem; height: 2px; background: var(--hi); }
+
+  .sync { font-family: var(--mono); font-size: .75rem; color: var(--ink-dim); letter-spacing: .04em; }
+
+  .toast {
+    position: fixed; left: 0; right: 0; bottom: 0; display: flex; justify-content: center; pointer-events: none;
+    padding: 0 max(16px, env(safe-area-inset-left, 0px)) calc(16px + env(safe-area-inset-bottom, 0px)) max(16px, env(safe-area-inset-right, 0px));
+  }
+  .toast span {
+    background: var(--ink); color: var(--hi-ink); font-weight: 700; padding: .7rem 1.1rem; border-radius: 4px;
+    box-shadow: 0 6px 20px rgba(5, 25, 80, .45); opacity: 0; transform: translateY(8px); transition: opacity .18s, transform .18s;
+  }
+  .toast.show span { opacity: 1; transform: none; }
+  @media (prefers-reduced-motion: reduce) { .toast span { transition: none; } }
+  @media (min-width: 560px) {
+    .nm { font-size: 2.4rem; }
+    .count { font-size: 4.2rem; }
+    .row { padding-inline: 1.2rem; }
+  }
+</style>
+
+<div class="wrap">
+  <header class="mast">
+    <p class="eyebrow" id="weekLabel">Week</p>
+    <h1><span>Goon</span><span>Counter</span></h1>
+    <div class="clock">
+      <span class="clock-label">Week ends in</span>
+      <span class="clock-val" id="clock">--</span>
+    </div>
+  </header>
+
+  <section class="sec" aria-labelledby="boardTitle">
+    <div class="sec-head">
+      <h2 id="boardTitle">This week</h2>
+      <p class="sub">Fewest slips wins. Most slips takes the forfeit.</p>
+    </div>
+    <p class="banner" id="banner"></p>
+    <ol class="rows" id="rows"></ol>
+  </section>
+
+  <section class="sec" aria-labelledby="forfeitTitle">
+    <div class="sec-head">
+      <h2 id="forfeitTitle">The forfeit</h2>
+      <p class="sub">Drawn at random for whoever is on the hot seat when the week closes.</p>
+    </div>
+    <div class="panel" id="forfeit"></div>
+  </section>
+
+  <section class="sec" aria-labelledby="histTitle">
+    <div class="sec-head">
+      <h2 id="histTitle">Past weeks</h2>
+      <p class="sub">Who ended up on the hot seat, week by week.</p>
+    </div>
+    <ul class="hist" id="hist"></ul>
+  </section>
+
+  <section class="sec" aria-labelledby="rulesTitle">
+    <h2 id="rulesTitle">House rules</h2>
+    <ul class="rules">
+      <li>The week runs Monday to Sunday and resets at Monday 00:00.</li>
+      <li>Log your own slips. The counter only works if everyone is honest.</li>
+      <li>Logged one by mistake? Use Undo last.</li>
+      <li>Tied for the most slips? Everyone tied takes the forfeit.</li>
+      <li>The forfeit gets done before the next week ends. No negotiating.</li>
+      <li>Nobody slipped? Nobody pays, and the group wins.</li>
+    </ul>
+  </section>
+
+  <p class="sync" id="sync">Connecting...</p>
+</div>
+<div class="toast" id="toastBox" aria-live="polite"><span id="toast"></span></div>
+
+<script>
+(function () {
+  var NAMES = ["Zain", "Zubair", "Ehsan", "Zeeshan", "Younousse", "Rayhan"];
+  var FORFEITS = [
+    "Buys the group food or drinks next time you all meet",
+    "Does 50 push-ups on video and sends it to the group chat",
+    "Cooks or washes up for everyone at the next hangout",
+    "Runs every errand the group asks for on Saturday",
+    "Runs 5 km before the next week ends",
+    "Hands their phone to a friend for 3 hours",
+    "Picks and pays for the next group activity",
+    "Lets the group rename the group chat for 48 hours",
+    "Holds a 3 minute plank while the group watches"
+  ];
+  var MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+  var LS_KEY = "goon-counter-local-v1";
+  var reduced = window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+  var slips = [];          // {id, name, ts}
+  var picks = {};          // weekKey -> forfeit index
+  var mode = "connecting"; // connecting | live | local
+  var stale = false;
+  var pending = null;
+  var busy = {};
+  var spinning = false;
+  var spinText = "";
+  var store = null;
+  var toastTimer = null;
+
+  function $(id) { return document.getElementById(id); }
+  function pad(n) { return String(n).padStart(2, "0"); }
+  function weekStart(d) {
+    var s = new Date(d); var off = (s.getDay() + 6) % 7;
+    s.setDate(s.getDate() - off); s.setHours(0, 0, 0, 0); return s;
+  }
+  function keyOf(d) { return d.getFullYear() + "-" + pad(d.getMonth() + 1) + "-" + pad(d.getDate()); }
+  function fmt(d) { return d.getDate() + " " + MONTHS[d.getMonth()]; }
+  function isoWeek(d) {
+    var t = new Date(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()));
+    var day = t.getUTCDay() || 7; t.setUTCDate(t.getUTCDate() + 4 - day);
+    var y0 = new Date(Date.UTC(t.getUTCFullYear(), 0, 1));
+    return Math.ceil(((t - y0) / 864e5 + 1) / 7);
+  }
+  function startOfDay(ms) { var d = new Date(ms); d.setHours(0, 0, 0, 0); return d.getTime(); }
+  function plural(n, w) { return n + " " + w + (n === 1 ? "" : "s"); }
+
+  function toast(msg) {
+    var box = $("toastBox"); $("toast").textContent = msg; box.classList.add("show");
+    clearTimeout(toastTimer); toastTimer = setTimeout(function () { box.classList.remove("show"); }, 2800);
+  }
+
+  function compute() {
+    var now = new Date(); var ws = weekStart(now); var we = new Date(ws); we.setDate(we.getDate() + 7);
+    var counts = {}, last = {};
+    NAMES.forEach(function (n) { counts[n] = 0; last[n] = 0; });
+    slips.forEach(function (s) {
+      if (NAMES.indexOf(s.name) < 0) return;
+      if (s.ts >= ws.getTime() && s.ts < we.getTime()) counts[s.name]++;
+      if (s.ts > last[s.name]) last[s.name] = s.ts;
+    });
+    var order = NAMES.map(function (n, i) { return { n: n, i: i, c: counts[n] }; })
+      .sort(function (a, b) { return a.c - b.c || a.i - b.i; });
+    var max = order.length ? order[order.length - 1].c : 0;
+    var losers = max > 0 ? order.filter(function (o) { return o.c === max; }).map(function (o) { return o.n; }) : [];
+    return { now: now, ws: ws, we: we, counts: counts, last: last, order: order, max: max, losers: losers, key: keyOf(ws) };
+  }
+
+  function streakText(ts, now) {
+    if (!ts) return "No slips logged";
+    var days = Math.round((startOfDay(now.getTime()) - startOfDay(ts)) / 864e5);
+    if (days <= 0) return "Slipped today";
+    return plural(days, "day") + " clean";
+  }
+
+  function renderHeader(c) {
+    var endDay = new Date(c.we); endDay.setDate(endDay.getDate() - 1);
+    $("weekLabel").textContent = "Week " + isoWeek(c.ws) + " / " + fmt(c.ws) + " to " + fmt(endDay);
+    var ms = Math.max(0, c.we.getTime() - c.now.getTime());
+    var d = Math.floor(ms / 864e5), h = Math.floor(ms % 864e5 / 36e5), m = Math.floor(ms % 36e5 / 6e4);
+    $("clock").textContent = d + "d " + pad(h) + "h " + pad(m) + "m";
+    var s = $("sync");
+    if (mode === "live") s.textContent = stale ? "Can't reach the shared scoreboard yet. Numbers may be out of date." : "Shared scoreboard. Updates live for everyone.";
+    else if (mode === "local") s.textContent = "Saved on this device only. Open the shared link while signed in to count together.";
+    else s.textContent = "Connecting...";
+  }
+
+  function renderBoard(c) {
+    var ae = document.activeElement; var fk = ae && ae.dataset ? ae.dataset.key : null;
+    var banner = $("banner");
+    if (c.losers.length) banner.textContent = "Hot seat: " + c.losers.join(", ") + " on " + plural(c.max, "slip") + (c.losers.length > 1 ? " each." : ".");
+    else banner.textContent = "Everyone is clean so far this week. Keep it that way.";
+
+    var rank = 0, prev = null, html = "";
+    c.order.forEach(function (o, idx) {
+      if (prev === null || o.c !== prev) rank = idx + 1;
+      prev = o.c;
+      var n = o.n, cnt = o.c;
+      var hot = c.losers.indexOf(n) >= 0;
+      var pill = hot ? ["", "Hot seat"] : cnt === 0 ? ["clean", "Clean"] : ["watch", "On watch"];
+      var dis = busy[n] ? " disabled" : "";
+      var actions;
+      if (pending === n) {
+        actions = '<span class="ask">Log a slip for ' + n + '?</span>' +
+          '<button class="btn primary" data-act="confirm" data-name="' + n + '" data-key="confirm-' + n + '"' + dis + '>Yes, log it</button>' +
+          '<button class="btn" data-act="cancel" data-name="' + n + '" data-key="cancel-' + n + '">Cancel</button>';
+      } else {
+        actions = '<button class="btn" data-act="slip" data-name="' + n + '" data-key="slip-' + n + '"' + dis + '>I slipped</button>' +
+          (cnt > 0 ? '<button class="btn ghost" data-act="undo" data-name="' + n + '" data-key="undo-' + n + '"' + dis + '>Undo last</button>' : "");
+      }
+      html += '<li class="row' + (hot ? " hot" : "") + '">' +
+        '<span class="rank">' + rank + '</span>' +
+        '<div class="who"><span class="nm">' + n + '</span><span class="meta"><span class="pill ' + pill[0] + '">' + pill[1] + '</span><span class="streak">' + streakText(c.last[n], c.now) + '</span></span></div>' +
+        '<span class="count" aria-label="' + plural(cnt, "slip") + ' this week">' + cnt + '</span>' +
+        '<div class="actions">' + actions + '</div></li>';
+    });
+    $("rows").innerHTML = html;
+    if (fk) { var el = $("rows").querySelector('[data-key="' + fk + '"]'); if (el) el.focus(); }
+  }
+
+  function renderForfeit(c) {
+    var idx = picks[c.key];
+    var html = "";
+    if (!c.losers.length) {
+      html += '<p class="draw idle">Nothing to draw yet. Nobody has slipped this week.</p>';
+    } else {
+      html += '<p class="eyebrow">For ' + c.losers.join(" & ") + '</p>';
+      if (spinning) html += '<p class="draw" aria-hidden="true">' + spinText + '</p>';
+      else if (idx !== undefined) html += '<p class="draw">' + FORFEITS[idx] + '</p>';
+      else html += '<p class="draw idle">Not drawn yet. Draw it once the week is over.</p>';
+      html += '<button class="btn primary" data-act="draw"' + (spinning ? " disabled" : "") + ' data-key="draw">' +
+        (idx === undefined ? "Draw forfeit" : "Draw again") + '</button>';
+    }
+    html += '<details><summary>All ' + FORFEITS.length + ' forfeits</summary><ul>' +
+      FORFEITS.map(function (f) { return "<li>" + f + "</li>"; }).join("") + '</ul></details>';
+    var ae = document.activeElement; var fk = ae && ae.dataset ? ae.dataset.key : null;
+    var open = $("forfeit").querySelector("details");
+    var wasOpen = open && open.open;
+    $("forfeit").innerHTML = html;
+    if (wasOpen) $("forfeit").querySelector("details").open = true;
+    if (fk === "draw") { var b = $("forfeit").querySelector('[data-key="draw"]'); if (b && !b.disabled) b.focus(); }
+  }
+
+  function renderHistory(c) {
+    var byWeek = {};
+    slips.forEach(function (s) {
+      if (NAMES.indexOf(s.name) < 0) return;
+      var k = keyOf(weekStart(new Date(s.ts)));
+      if (k >= c.key) return;
+      byWeek[k] = byWeek[k] || {};
+      byWeek[k][s.name] = (byWeek[k][s.name] || 0) + 1;
+    });
+    var keys = Object.keys(byWeek).sort().reverse().slice(0, 5);
+    if (!keys.length) { $("hist").innerHTML = '<li class="empty">No past weeks yet. The first result lands on Monday.</li>'; return; }
+    $("hist").innerHTML = keys.map(function (k) {
+      var counts = byWeek[k], max = 0;
+      Object.keys(counts).forEach(function (n) { if (counts[n] > max) max = counts[n]; });
+      var who = NAMES.filter(function (n) { return counts[n] === max; });
+      var p = k.split("-"); var d = new Date(+p[0], +p[1] - 1, +p[2]);
+      return '<li><span class="wk">Week of ' + fmt(d) + '</span><span class="res">' + who.join(" & ") + ' / ' + plural(max, "slip") + '</span></li>';
+    }).join("");
+  }
+
+  function renderAll() { var c = compute(); renderHeader(c); renderBoard(c); renderForfeit(c); renderHistory(c); }
+
+  function failToast(e) {
+    if (e && e.code === "invalid_argument") toast("You need Contributor access to change the scoreboard.");
+    else toast("Couldn't save that. Try again.");
+  }
+
+  async function onSlip(name) {
+    if (busy[name]) return; busy[name] = true; pending = null; renderAll();
+    try { var s = await store; await s.add(name); toast("Slip logged for " + name + ". Streak reset."); }
+    catch (e) { failToast(e); }
+    finally { busy[name] = false; renderAll(); }
+  }
+  async function onUndo(name) {
+    if (busy[name]) return;
+    var ws = weekStart(new Date()).getTime();
+    var mine = slips.filter(function (s) { return s.name === name && s.ts >= ws; }).sort(function (a, b) { return b.ts - a.ts; });
+    if (!mine.length) return;
+    busy[name] = true; renderAll();
+    try { var s = await store; await s.remove(mine[0].id); toast("Last slip removed for " + name + "."); }
+    catch (e) { failToast(e); }
+    finally { busy[name] = false; renderAll(); }
+  }
+  async function onDraw() {
+    if (spinning) return;
+    var c = compute(); if (!c.losers.length) return;
+    spinning = true; spinText = FORFEITS[0];
+    var final = Math.floor(Math.random() * FORFEITS.length);
+    var iv = setInterval(function () { spinText = FORFEITS[Math.floor(Math.random() * FORFEITS.length)]; renderForfeit(compute()); }, 90);
+    renderForfeit(c);
+    await new Promise(function (r) { setTimeout(r, reduced ? 0 : 1200); });
+    clearInterval(iv); spinning = false;
+    try { var s = await store; await s.setPick(c.key, final); }
+    catch (e) { failToast(e); }
+    renderForfeit(compute());
+  }
+
+  document.addEventListener("click", function (ev) {
+    var b = ev.target.closest ? ev.target.closest("button[data-act]") : null;
+    if (!b || b.disabled) return;
+    var act = b.getAttribute("data-act"), name = b.getAttribute("data-name");
+    if (name && NAMES.indexOf(name) < 0) return;
+    if (act === "slip") { pending = name; renderAll(); }
+    else if (act === "cancel") { pending = null; renderAll(); }
+    else if (act === "confirm") onSlip(name);
+    else if (act === "undo") onUndo(name);
+    else if (act === "draw") onDraw();
+  });
+
+  function localStore() {
+    try {
+      var raw = localStorage.getItem(LS_KEY);
+      if (raw) { var o = JSON.parse(raw); slips = Array.isArray(o.slips) ? o.slips : []; picks = o.picks || {}; }
+    } catch (e) {}
+    function save() { try { localStorage.setItem(LS_KEY, JSON.stringify({ slips: slips, picks: picks })); } catch (e) {} }
+    mode = "local";
+    return {
+      add: async function (name) { slips = slips.concat([{ id: "l" + Date.now() + Math.random().toString(36).slice(2, 6), name: name, ts: Date.now() }]); save(); },
+      remove: async function (id) { slips = slips.filter(function (s) { return s.id !== id; }); save(); },
+      setPick: async function (key, idx) { picks[key] = idx; save(); }
+    };
+  }
+
+  async function init() {
+    try {
+      var cl = window.claude;
+      var db = cl && cl.use ? await cl.use("db") : null;
+      if (db) {
+        var slipsCol = db.collection("slips");
+        var pickCol = db.collection("forfeitpick");
+        mode = "live";
+        var timer = setTimeout(function () { stale = true; renderAll(); }, 10000);
+        slipsCol.onSnapshot(function (snap) {
+          slips = snap.docs.map(function (d) { var v = d.data() || {}; return { id: d.id, name: String(v.name), ts: Number(v.ts) || 0 }; });
+          if (!snap.metadata.fromCache) { clearTimeout(timer); stale = false; }
+          renderAll();
+        }, function () { stale = true; renderAll(); });
+        pickCol.onSnapshot(function (snap) {
+          var p = {};
+          snap.docs.forEach(function (d) { var v = d.data() || {}; var i = Number(v.idx); if (Number.isInteger(i) && i >= 0 && i < FORFEITS.length) p[d.id] = i; });
+          picks = p; renderAll();
+        }, function () {});
+        return {
+          add: function (name) { return slipsCol.add({ name: name, ts: Date.now() }); },
+          remove: function (id) { return slipsCol.doc(id).delete(); },
+          setPick: function (key, idx) { return pickCol.doc(key).set({ idx: idx, ts: Date.now() }); }
+        };
+      }
+    } catch (e) {}
+    var ls = localStore(); renderAll(); return ls;
+  }
+
+  renderAll();
+  store = init();
+  setInterval(renderAll, 30000);
+})();
+</script>
+
+</body></html>
